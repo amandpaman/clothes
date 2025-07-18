@@ -1,4 +1,1 @@
-Name,Contact,Address,Clothes Description
-Aman Yadav,8601885393,hungry,jeans
-1,aa,8601885393,amandpaman5@gmail.com,Vill. Kuit Khera Po. Sariyapur Akbarpur Kanpur dehat Uttar Pradesh,Pants,jk,1,Received,2025-07-18 08:07:06,
-2,Aman Yadav Yadav,8601885393,amandpaman5@gmail.com,Vill. Kuit Khera Po. Sariyapur Akbarpur Kanpur dehat Uttar Pradesh,Dresses,,1,Received,2025-07-18 14:54:54,
+ID,Name,Contact,Email,Address,Category,Clothes,Quantity,Status,Date,Notes
