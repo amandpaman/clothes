@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clothes Donation Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; 
+            padding: 20px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { font-size: 1.1rem; opacity: 0.9; }
+        
+        .form-container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .error-container { 
+            background: #fee; 
+            border: 1px solid #fcc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            color: #c33;
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #333;
+        }
+        
+        input, textarea, select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e1e5e9; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus { 
+            outline: none; 
+            border-color: #667eea; 
+        }
+        
+        .row { display: flex; gap: 15px; }
+        .col { flex: 1; }
+        
+        textarea { resize: vertical; height: 100px; }
+        
+        .submit-btn { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            font-size: 18px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            width: 100%; 
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover { transform: translateY(-2px); }
+        
+        .nav-links { 
+            text-align: center; 
+            margin-top: 20px; 
+        }
+        
+        .nav-links a { 
+            color: white; 
+            text-decoration: none; 
+            margin: 0 15px; 
+            font-weight: 500;
+        }
+        
+        .stats-banner {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        @media (max-width: 600px) {
+            .row { flex-direction: column; }
+            .header h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤝 Clothes Donation Portal</h1>
+            <p>Help those in need by donating your unused clothes</p>
+        </div>
+        
+        <div class="stats-banner">
+            <h3>📊 Impact Statistics</h3>
+            <p id="live-stats">Loading...</p>
+        </div>
+        
+        <div class="form-container">
+            {% if errors %}
+            <div class="error-container">
+                <strong>Please fix the following errors:</strong>
+                <ul>
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <form method="POST" id="donationForm">
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="name">Full Name *</label>
+                            <input type="text" id="name" name="name" 
+                                   value="{{ form_data.name if form_data else '' }}" required>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="contact">Phone Number *</label>
+                            <input type="tel" id="contact" name="contact" 
+                                   value="{{ form_data.contact if form_data else '' }}" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" 
+                           value="{{ form_data.email if form_data else '' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="address">Pickup Address *</label>
+                    <textarea id="address" name="address" required 
+                              placeholder="Please provide your complete address for pickup">{{ form_data.address if form_data else '' }}</textarea>
+                </div>
+                
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="category">Clothing Category *</label>
+                            <select id="category" name="category" required>
+                                <option value="">Select category</option>
+                                {% for category in categories %}
+                                <option value="{{ category }}" 
+                                        {% if form_data and form_data.category == category %}selected{% endif %}>
+                                    {{ category }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="quantity">Estimated Quantity</label>
+                            <input type="number" id="quantity" name="quantity" min="1" 
+                                   value="{{ form_data.quantity if form_data else '1' }}" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clothes">Detailed Description</label>
+                    <textarea id="clothes" name="clothes" 
+                              placeholder="Please describe the clothes you're donating (condition, sizes, brands, etc.)">{{ form_data.clothes if form_data else '' }}</textarea>
+                </div>
+                
+                <button type="submit" class="submit-btn">🎁 Submit Donation</button>
+            </form>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/admin">👨‍💼 Admin Panel</a>
+        </div>
+    </div>
+    
+    <script>
+        // Load live statistics
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('live-stats').innerHTML = 
+                    `Total Donations: ${data.total} | Items Distributed: ${data.distributed} | Pending: ${data.pending}`;
+            })
+            .catch(error => {
+                document.getElementById('live-stats').innerHTML = 'Statistics unavailable';
+                console.error('Error loading stats:', error);
+            });
+            
+        // Form validation
+        document.getElementById('donationForm').addEventListener('submit', function(e) {
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('contact').value;
+            
+            if (!email.includes('@')) {
+                alert('Please enter a valid email address');
+                e.preventDefault();
+                return;
+            }
+            
+            if (phone.length < 10) {
+                alert('Please enter a valid phone number');
+                e.preventDefault();
+                return;
+            }
+        });
+    </script>
+</body>
+</html>
