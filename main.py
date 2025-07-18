@@ -2,167 +2,154 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+import uuid
 
-# File path
-DATA_FILE = 'data/donations.csv'
-ADMIN_ID = 'admin'
-ADMIN_PASSWORD = 'admin123'
+# ---------- Config ----------
+st.set_page_config(page_title="Clothes Donation", layout="centered")
+DATA_FILE = "data/donations.csv"
 
-# Ensure data folder and CSV exists
-os.makedirs('data', exist_ok=True)
+# ---------- Ensure CSV Exists ----------
+os.makedirs("data", exist_ok=True)
 if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=[
-        'ID', 'Name', 'Contact', 'Email', 'Address',
-        'Category', 'Clothes Description', 'Quantity',
-        'Status', 'Date', 'Notes'
-    ])
+    with open(DATA_FILE, "w") as f:
+        f.write("ID,Name,Contact,Email,Address,Category,Clothes Description,Quantity,Status,Date,Notes\n")
+
+# ---------- Functions ----------
+def load_data():
+    return pd.read_csv(DATA_FILE)
+
+def save_data(new_entry):
+    df = load_data()
+    df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
     df.to_csv(DATA_FILE, index=False)
 
-# Styling
-st.set_page_config(page_title="Clothes Donation Portal", layout="centered")
+def get_stats(df):
+    return {
+        "total": len(df),
+        "distributed": len(df[df["Status"] == "Distributed"]),
+        "pending": len(df[df["Status"].isin(["Received", "Processing"])])
+    }
+
+# ---------- CSS Styling ----------
 st.markdown("""
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-        }
-        .main {
-            background-color: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .stTextInput>div>div>input {
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 10px;
-        }
-        .stTextArea>div>textarea {
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 10px;
-        }
-    </style>
+<style>
+body {
+    background: linear-gradient(to right, #667eea, #764ba2);
+}
+section.main > div {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+h1, h2, h3, label {
+    color: #333;
+}
+[data-testid="stSidebar"] {
+    background: linear-gradient(to bottom, #667eea, #764ba2);
+    color: white;
+}
+.stButton button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 8px;
+}
+.stTextInput, .stSelectbox, .stNumberInput, .stTextArea {
+    background-color: #f0f0f5;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Categories
-CATEGORIES = ['Shirts', 'Pants', 'Dresses', 'Shoes', 'Jackets', 'Accessories', 'Undergarments', 'Other']
-STATUSES = ['Received', 'Processing', 'Distributed', 'Pending']
+# ---------- Sidebar ----------
+st.sidebar.title("👕 Clothes Donation")
+nav = st.sidebar.radio("Go to", ["Submit Donation", "Admin Panel", "Download Data"])
 
-# Title
-st.markdown("<h1 style='text-align:center; color:white;'>🤝 Clothes Donation Portal</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:white;'>Help those in need by donating your unused clothes</p>", unsafe_allow_html=True)
+# ---------- Page 1: Submit Donation ----------
+if nav == "Submit Donation":
+    st.title("🤝 Donate Clothes")
 
-# Navigation
-menu = st.sidebar.selectbox("Navigate", ["🏠 Home", "👨‍💼 Admin Panel", "📊 Dashboard"])
-
-# Home - Donation form
-if menu == "🏠 Home":
-    st.subheader("🎁 Submit Your Donation")
+    df = load_data()
+    stats = get_stats(df)
+    st.markdown(f"""
+    <div style='background:rgba(255,255,255,0.2); padding:15px; border-radius:10px; color:white; text-align:center;'>
+        <h3>📊 Live Stats</h3>
+        <p>Total Donations: <b>{stats['total']}</b> | Distributed: <b>{stats['distributed']}</b> | Pending: <b>{stats['pending']}</b></p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.write("")
 
     with st.form("donation_form"):
-        name = st.text_input("Full Name *")
-        contact = st.text_input("Phone Number *")
-        email = st.text_input("Email Address *")
-        address = st.text_area("Pickup Address *")
-        category = st.selectbox("Clothing Category *", ["Select"] + CATEGORIES)
-        quantity = st.number_input("Estimated Quantity", min_value=1, value=1)
-        clothes_desc = st.text_area("Clothes Description (brand, size, condition...)")
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Full Name *")
+        with col2:
+            contact = st.text_input("Phone Number *")
 
-        submitted = st.form_submit_button("📨 Submit")
+        email = st.text_input("Email *")
+        address = st.text_area("Pickup Address *")
+        col3, col4 = st.columns(2)
+        with col3:
+            category = st.selectbox("Clothing Category", ["Shirts", "Pants", "Dresses", "Shoes", "Jackets", "Accessories", "Undergarments", "Other"])
+        with col4:
+            quantity = st.number_input("Estimated Quantity", min_value=1, step=1, value=1)
+
+        clothes = st.text_area("Clothes Description")
+        submitted = st.form_submit_button("🎁 Submit Donation")
 
         if submitted:
-            errors = []
-            if not name:
-                errors.append("Name is required.")
-            if not contact or len(contact) < 10:
-                errors.append("Valid phone number is required.")
-            if not email or "@" not in email:
-                errors.append("Valid email is required.")
-            if not address:
-                errors.append("Address is required.")
-            if category == "Select":
-                errors.append("Select a valid category.")
-
-            if errors:
-                for error in errors:
-                    st.error(error)
+            if not name or not contact or not email or not address:
+                st.error("Please fill all required fields.")
             else:
-                try:
-                    df = pd.read_csv(DATA_FILE)
-                    next_id = int(df['ID'].max()) + 1 if not df.empty else 1
-                except:
-                    next_id = 1
-
-                new_data = {
-                    'ID': next_id,
-                    'Name': name,
-                    'Contact': contact,
-                    'Email': email,
-                    'Address': address,
-                    'Category': category,
-                    'Clothes Description': clothes_desc,
-                    'Quantity': quantity,
-                    'Status': 'Received',
-                    'Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'Notes': ''
+                donation_id = str(uuid.uuid4())[:8]
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_entry = {
+                    "ID": donation_id,
+                    "Name": name,
+                    "Contact": contact,
+                    "Email": email,
+                    "Address": address,
+                    "Category": category,
+                    "Clothes Description": clothes,
+                    "Quantity": quantity,
+                    "Status": "Received",
+                    "Date": now,
+                    "Notes": ""
                 }
+                save_data(new_entry)
+                st.success(f"Thank you, {name}! Your donation has been recorded with ID: {donation_id}.")
 
-                df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-                df.to_csv(DATA_FILE, index=False)
+# ---------- Page 2: Admin Panel ----------
+elif nav == "Admin Panel":
+    st.title("👨‍💼 Admin Panel")
 
-                st.success(f"✅ Thank you {name}! Your donation ID is {next_id}.")
+    password = st.text_input("Admin Password", type="password")
+    if password == "admin123":
+        df = load_data()
 
-# Admin Panel
-elif menu == "👨‍💼 Admin Panel":
-    st.subheader("🔐 Admin Login")
+        st.subheader("Filter Donations")
+        col1, col2 = st.columns(2)
+        with col1:
+            status_filter = st.selectbox("Filter by Status", ["", "Received", "Processing", "Distributed", "Pending"])
+        with col2:
+            category_filter = st.selectbox("Filter by Category", [""] + df["Category"].unique().tolist())
 
-    login_id = st.text_input("Admin ID")
-    login_pass = st.text_input("Password", type="password")
+        filtered = df.copy()
+        if status_filter:
+            filtered = filtered[filtered["Status"] == status_filter]
+        if category_filter:
+            filtered = filtered[filtered["Category"] == category_filter]
 
-    if st.button("Login"):
-        if login_id == ADMIN_ID and login_pass == ADMIN_PASSWORD:
-            st.success("Logged in successfully!")
+        st.dataframe(filtered, use_container_width=True)
 
-            df = pd.read_csv(DATA_FILE)
-
-            st.markdown("### 📋 All Donations")
-            status_filter = st.selectbox("Filter by status", ["All"] + STATUSES)
-            category_filter = st.selectbox("Filter by category", ["All"] + CATEGORIES)
-
-            if status_filter != "All":
-                df = df[df['Status'] == status_filter]
-            if category_filter != "All":
-                df = df[df['Category'] == category_filter]
-
-            st.dataframe(df, use_container_width=True)
-
-            # Export option
-            if not df.empty:
-                excel_file = 'data/exported_donations.xlsx'
-                df.to_excel(excel_file, index=False)
-                with open(excel_file, 'rb') as f:
-                    st.download_button("📥 Download Excel", f, file_name="donations.xlsx")
-
-        else:
-            st.error("Invalid admin credentials.")
-
-# Dashboard
-elif menu == "📊 Dashboard":
-    st.subheader("📈 Donation Statistics")
-
-    df = pd.read_csv(DATA_FILE)
-
-    if df.empty:
-        st.info("No donations submitted yet.")
+        st.info(f"Showing {len(filtered)} records.")
     else:
-        total_donations = len(df)
-        total_items = df['Quantity'].astype(int).sum()
-        distributed = len(df[df['Status'] == 'Distributed'])
-        pending = len(df[df['Status'].isin(['Received', 'Processing'])])
+        if password:
+            st.error("Incorrect password.")
 
-        st.metric("Total Donations", total_donations)
-        st.metric("Total Items", total_items)
-        st.metric("Distributed", distributed)
-        st.metric("Pending", pending)
-
-        st.bar_chart(df['Category'].value_counts())
+# ---------- Page 3: Export ----------
+elif nav == "Download Data":
+    df = load_data()
+    st.title("📥 Export Donation Data")
+    st.download_button("Download as Excel", df.to_csv(index=False).encode('utf-8'), "donations.csv", "text/csv")
