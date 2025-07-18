@@ -1,130 +1,134 @@
 import streamlit as st
 import pandas as pd
 import os
-import io
 from datetime import datetime
 
-# Constants
-DATA_FILE = "donations.csv"
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin123"
-STATUS_OPTIONS = ["Received", "Processing", "Distributed"]
+# ------------------- Setup -------------------
+st.set_page_config(page_title="Clothes Donation Portal", layout="centered")
 
-# Ensure CSV exists
+DATA_FILE = 'data/donations.csv'
+os.makedirs('data', exist_ok=True)
+
 if not os.path.exists(DATA_FILE):
-    pd.DataFrame(columns=["ID", "Name", "Contact", "Email", "Address", "Category", "Clothes", "Quantity", "Status", "Date", "Notes"]).to_csv(DATA_FILE, index=False)
+    df_init = pd.DataFrame(columns=[
+        'ID', 'Name', 'Contact', 'Email', 'Address',
+        'Category', 'Clothes Description', 'Quantity',
+        'Status', 'Date', 'Notes'
+    ])
+    df_init.to_csv(DATA_FILE, index=False)
 
-# Utility
+# ------------------- Utility Functions -------------------
 def get_next_id():
-    try:
-        df = pd.read_csv(DATA_FILE)
-        return str(int(df["ID"].iloc[-1]) + 1) if not df.empty else "1"
-    except:
-        return "1"
+    df = pd.read_csv(DATA_FILE)
+    return str(df['ID'].astype(int).max() + 1) if not df.empty else '1'
 
-# Set Page Theme
-st.set_page_config(page_title="Clothes Donation", page_icon="🧥", layout="centered")
+def load_data():
+    return pd.read_csv(DATA_FILE)
 
-# Custom Style (colors, font)
-st.markdown("""
-    <style>
-    .main {background-color: #f9f9f9;}
-    h1, h2, h3 {color: #205375;}
-    .stButton>button {
-        background-color: #205375;
-        color: white;
-        border-radius: 5px;
-        font-weight: bold;
-    }
-    .stDownloadButton>button {
-        background-color: #28a745;
-        color: white;
-    }
-    </style>
-""", unsafe_allow_html=True)
+def save_data(new_row):
+    df = load_data()
+    df.loc[len(df)] = new_row
+    df.to_csv(DATA_FILE, index=False)
 
-# Sidebar
-st.sidebar.title("☁️ Clothes Donation")
-menu = st.sidebar.radio("📂 Navigate", ["👕 Donate Clothes", "🔐 Admin Panel"])
+def apply_background():
+    st.markdown("""
+        <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .stApp {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stTextInput > div > input,
+        .stTextArea > div > textarea,
+        .stSelectbox > div > div {
+            background-color: white !important;
+            color: black !important;
+        }
+        .stButton > button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            padding: 10px 16px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-# --------------------------------------------
-# 👕 Donation Form
-# --------------------------------------------
-if menu == "👕 Donate Clothes":
-    st.title("👕 Donate Your Clothes")
-    st.markdown("#### Help those in need by donating gently used clothes.")
+apply_background()
+
+# ------------------- Pages -------------------
+st.title("🤝 Clothes Donation Portal")
+st.subheader("Help those in need by donating your unused clothes")
+
+menu = st.sidebar.radio("Navigate", ["Home", "Admin Panel", "Dashboard"])
+
+# ------------------- Home Form -------------------
+if menu == "Home":
+    st.header("🎁 Submit Your Donation")
 
     with st.form("donation_form"):
-        col1, col2 = st.columns(2)
-        name = col1.text_input("👤 Full Name")
-        contact = col2.text_input("📞 Phone Number")
-        email = col1.text_input("📧 Email")
-        address = col2.text_area("🏠 Pickup Address")
-
-        category = st.selectbox("🧷 Category", ["Shirts", "Pants", "Dresses", "Shoes", "Jackets", "Accessories", "Undergarments", "Other"])
-        clothes = st.text_input("📦 Clothes Description")
-        quantity = st.slider("🎁 Quantity", min_value=1, max_value=20, value=1)
-
-        submitted = st.form_submit_button("✅ Submit Donation")
+        name = st.text_input("Full Name *")
+        contact = st.text_input("Phone Number *")
+        email = st.text_input("Email *")
+        address = st.text_area("Pickup Address *")
+        category = st.selectbox("Clothing Category *", 
+                                ["Shirts", "Pants", "Dresses", "Shoes", "Jackets", "Accessories", "Undergarments", "Other"])
+        quantity = st.number_input("Quantity *", min_value=1, value=1)
+        clothes = st.text_area("Description")
+        submitted = st.form_submit_button("Submit Donation")
 
         if submitted:
-            if name and contact and email and address and clothes:
-                donation_id = get_next_id()
-                date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_data = pd.DataFrame([[donation_id, name, contact, email, address, category, clothes, quantity, "Received", date, ""]],
-                                        columns=["ID", "Name", "Contact", "Email", "Address", "Category", "Clothes", "Quantity", "Status", "Date", "Notes"])
-                new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                st.success(f"🎉 Thank you, **{name}**! Your donation (ID: `{donation_id}`) has been recorded.")
+            if not name or not contact or not email or not address:
+                st.error("Please fill all required fields marked with *")
             else:
-                st.error("❌ Please fill in **all fields**.")
+                donation_id = get_next_id()
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                save_data([
+                    donation_id, name, contact, email, address,
+                    category, clothes, quantity, 'Received', timestamp, ''
+                ])
+                st.success(f"✅ Thank you {name}! Your donation ID is {donation_id}")
 
-# --------------------------------------------
-# 🔐 Admin Panel
-# --------------------------------------------
-elif menu == "🔐 Admin Panel":
-    st.title("🔐 Admin Panel")
-    st.markdown("Manage donations submitted by users.")
+# ------------------- Admin Panel -------------------
+elif menu == "Admin Panel":
+    st.header("👨‍💼 Admin Panel")
 
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
+    password = st.text_input("Enter Admin Password", type='password')
+    if password != 'admin123':
+        st.warning("🔐 Enter correct password to access admin panel.")
+        st.stop()
 
-    if not st.session_state.logged_in:
-        with st.form("login_form"):
-            username = st.text_input("🆔 Admin Username")
-            password = st.text_input("🔒 Password", type="password")
-            login = st.form_submit_button("🚪 Login")
+    df = load_data()
+    st.success("🔓 Access granted!")
 
-            if login:
-                if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-                    st.session_state.logged_in = True
-                    st.success("✅ Logged in successfully.")
-                else:
-                    st.error("❌ Invalid credentials.")
-    else:
-        try:
-            df = pd.read_csv(DATA_FILE)
+    # Filters
+    col1, col2 = st.columns(2)
+    with col1:
+        status_filter = st.selectbox("Filter by Status", ["All"] + df['Status'].unique().tolist())
+    with col2:
+        category_filter = st.selectbox("Filter by Category", ["All"] + df['Category'].unique().tolist())
 
-            st.markdown("### 📋 All Submissions")
+    if status_filter != "All":
+        df = df[df['Status'] == status_filter]
+    if category_filter != "All":
+        df = df[df['Category'] == category_filter]
 
-            # Filter section
-            with st.expander("🔍 Filter Options"):
-                status_filter = st.selectbox("Filter by status", ["All"] + df["Status"].unique().tolist())
-                if status_filter != "All":
-                    df = df[df["Status"] == status_filter]
+    st.dataframe(df, use_container_width=True)
 
-            st.dataframe(df, use_container_width=True)
+    st.download_button("📥 Download Excel", data=df.to_csv(index=False).encode('utf-8'), file_name="donations.csv")
 
-            # 📥 Excel export
-            with io.BytesIO() as buffer:
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False)
-                buffer.seek(0)
-                st.download_button("📥 Download Excel", data=buffer, file_name="donations.xlsx",
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+# ------------------- Dashboard -------------------
+elif menu == "Dashboard":
+    st.header("📊 Donation Statistics")
 
-            if st.button("🔓 Logout"):
-                st.session_state.logged_in = False
-                st.success("You have been logged out.")
+    df = load_data()
+    st.info(f"📦 Total Donations: {len(df)}")
 
-        except Exception as e:
-            st.error(f"⚠️ Error loading data: {e}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Distributed", len(df[df['Status'] == 'Distributed']))
+    col2.metric("Received", len(df[df['Status'] == 'Received']))
+    col3.metric("Processing", len(df[df['Status'] == 'Processing']))
+
+    st.bar_chart(df['Category'].value_counts())
